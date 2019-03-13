@@ -138,18 +138,22 @@ class ReporterNode():
 				continue
 
 			# check if we have passed any gate in our future objectives, if so we have to count missed gates
+			goalPub = rospy.Publisher('/goals', String, queue_size=10)
 			for i,gate in enumerate(gates[nextEventId:]):
 				if (gate.isEvent(trans,eventTol)):
 					if (i > 0):
 						rospy.loginfo("Skipped %d events",i)
 						for it in range(i):
+							goalPub.publish("Gate%d missed"%(nextEventId+it))
 							self.eventLogData["Gate%d"%(nextEventId+it)]=dict(Name=events[nextEventId+it], Success="False")
 					rospy.loginfo("Reached event %s at %f", events[nextEventId+i], rospy.Time.now().to_sec() - time_start)
-					self.eventLogData["Gate%d"%(nextEventId+i)] = dict(Time=rospy.Time.now().to_sec() - time_start, Location=trans, Name=events[nextEventId+i], Success="True")	
+					self.eventLogData["Gate%d"%(nextEventId+i)] = dict(Time=rospy.Time.now().to_sec() - time_start, Location=trans, Name=events[nextEventId+i], Success="True")
+					goalPub.publish("Gate%d passed at %d"%(nextEventId+it, rospy.Time.now().to_sec() - time_start))
 					nextEventId +=(i+1)
 				
 				if nextEventId >= len(events):
 					self.eventLogData["Result"]="Challenge Completed"
+					goalPub.publish("Challenge Completed at %d"%(rospy.Time.now().to_sec() - time_start))
 					self.writeLog()
 					rospy.loginfo("Completed the challenge")
 					rospy.signal_shutdown("Challenge complete")
